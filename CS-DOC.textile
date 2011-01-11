@@ -1,0 +1,308 @@
+h1. HOME
+
+GET /home
+- HomeController#index
+
+h2. Photo Gallery
+
+POST /photo-gallery
+- PhotoGalleryController#create
+
+h2. Wylayps
+
+POST /wylayps
+- WylaypsController
+
+h2. UI
+
+ui.photo_gallery.js - Photo Gallery
+
+* FancyBox plugin
+:: thirdparty/fancybox/jquery.fancybox-1.3.1.pack.js
+:: thirdparty/fancybox/jquery.easing-1.3.pack.js
+:: thirdparty/fancybox/jquery.mousewheel-3.0.2.pack.js
+
+* Uploadify Plugin
+:: uploadify/swfobject.js
+:: uploadify/jquery.uploadify.v2.1.4.min
+
+ui.home.js - Wylayps
+ui.nsbg_brief.js - How Are We Doing
+
+
+h1. CLARIFY YOUR NEEDS
+
+h2. CYN Process
+
+GET calls below deliver current state of each CYN step
+CynController#get_step : receives all URLs below. Dynamically decides what method to call according to requested step.
+
+GET /cyn/questions
+GET /cyn/choose-your-needs
+GET /cyn/rate-your-needs
+GET /cyn/review
+GET /cyn/link-to-partner
+GET /cyn/next-step?current_step='<current_step>' : delivers next step if current step is known
+
+CynController#post_step : receives all URLs above. Dynamically decides what method to call according to requested step.
+
+POST /cyn/questions
+* first_time : true | false
+* wylayp: [{id, answer_option}]
+* questions: [{id, answer_option}]
+* reason: "resolve" | "maintain"
+
+POST /cyn/choose-your-needs
+* nsbg 
+
+This was implemented like this because at the beginning there were big uncertainty about how many and which would be the steps.
+
+h2. NSBG and Sharing
+
+POST /nsbgs/need/:need_id/score
+* score
+
+POST /nsbgs/need/:need_id/priority
+* priority
+
+POST /nsbgs/need/:need_id/hidden
+* hidden : true | false ; where true hides the need
+
+POST /nsbgs/share
+Tells to share current NSBG state to partner
+
+h2. Partner Linking
+
+POST /partner-link
+* email: send linking invitation to this email address
+
+POST /partner-link/accept
+Tells that a partner has accepted an invitation to link accounts
+* c : partner link code to identify both parties
+
+POST /partner-link/reject
+Tells that a partner has rejected an invitation to link accounts
+* c : partner link code to identify both parties
+ 
+h2. UI
+
+ui.cyn.js: Controls the whole CYN process. Each CYN step is called via Ajax.
+
+ui.need_group_box.js: Need groupings in Choose Your Needs step
+
+ui.need_rating_box.js: Each of the needs in the Rate Your Needs step
+
+ui.partner_link_request.js: Accept / Reject partner linking invitation from Link To Partner step
+
+h2. Models
+
+h3. Need
+
+Data loaded via seeds. Contains the 25 needs.
+
+h3. NeedGroup
+
+Data loaded via seeds. Need groupings. Each need belongs to a group.
+
+h3. Partner
+
+* reason_for_trying
+  In CYN Questions the reason for trying CS: "resolve" current issues; "maintain" relationship
+* share_nsbg
+  Whether the current state of the NSBG is being shared to partner
+
+h3. CynQuestion
+
+Data loaded via seeds. Stores questions to show in Cyn Questionnaire
+
+h3. CynAnswerOption
+
+Data loaded via seeds. Stores answer options for each question
+
+h3. Wylayp
+
+Stores What You Love About Your Partner items
+
+h3. NsbgNow
+
+Each of these represents the current state of one need for one user. State means here score, position and visibility.
+
+h3. SharedNsbg
+
+Each entry represents the state visible by the other partner of one need
+
+h3. NsbgArchive & NsbgArchiveItem
+
+Represent the historical record of shared NSBGs. Everytime the user shares her NSBG, the current SharedNsbg is taken to the Archive.
+
+h3. Nsbg
+
+This ain't AR model, but a plain Ruby class. Contains logic for all operations related to NSBG.
+Main operations, exposed/represented as methods of this class are:
+
+  * update: updates need Satisfaction Level
+
+  * update_priority: updates need priority
+
+  * update_visibility: updates need visibility
+
+  * share_changes: update sharing state
+
+  * notify_changes (private) : interface for notifying changes to NSBG to other operations
+
+  * notify_positive_strokes (private) : check whether changes to NSBG trigger a Positive Stroke. This happens is Satisfaction Level raises by 10% or more.
+
+  * notify_wake_up_calls (private) : check whether changes to NSBG triger a Wake Up Call. This happens according to WUC setup.
+
+h3. EmailCode
+
+Used to store PartnerLink invitations. Both parties are "joined" by a code.
+
+h1. SATISFY YOUR NEEDS
+
+h2. Wake Up Calls
+
+GET /wuc
+HTML representation of set up Wake Up Calls
+
+POST /wuc
+Create or update Wake Up Call
+* wuc_item[message]
+* wuc_item[need_id]
+* wuc_item[threshold]
+* wuc_item[trigger_level]
+
+DELETE /wuc/:id
+Delete a Wake Up Call
+
+PUT /wuc/:id
+Update Wake Up Call. Receives one or more of the following parameters:
+* wuc[threshold] : Updates Trigger Level
+* wuc[trigger_after] : Updates time after which the Wake Up Call Alert is generated after NSBG change
+
+POST /wucs/:id/active
+* active : true | false
+
+h2. Positive Strokes
+
+GET /positive_strokes
+HTML representation of set up custom Positive Strokes
+
+GET /positive_strokes
+HTML representation of set up custom Positive Strokes drafts
+
+POST /positve_strokes
+Creates new PS
+* positive_stroke[message]
+* positive_stroke[deliver_date] : Only sent when picked "deliver by date"
+* postiive_stroke[state] : "sent" - deliver immediately ; "draft" - save as draft
+
+POST /positive_strokes/reminder
+* reminder[option]
+
+GET /nsbg/couple/raw
+HTML representation of raw visualization of couple's NSBGs
+
+h2. Models
+
+h3. WucItem
+
+Each of the setup Wake Up Calls
+
+h3. WucAlert
+
+A WucAlert is generated everytime a Satisfaction Level drops to or below the Wake Up Call trigger level.
+
+h3. PositiveStroke
+
+This is where custom Positive Strokes are stored. Auto PS are directly generated as Inbox items.
+
+h1. FUN
+
+
+h1. ACCOUNT
+
+h2. Login & Registration
+
+GET /user/new
+- UsersController#new
+HTML form for registering new user
+
+POST /account
+- UsersController#create
+* authlogic_user[login]
+* authlogic_user[email]
+* authlogic_user[password]
+* authlogic_user[password_confirmation]
+* month
+* year
+* day
+* gender
+
+GET /account/logout
+- UserSessionsController#destroy
+Used for logout from UI
+
+POST /account/logout
+- UserSessionsController#logout
+Used for logout from Ajax
+
+GET /account/activation
+- UsersController#activation
+Landing page for account activation. Link to this page is sent to email right after registration.
+
+GET /account/username_check
+- UsersController#check_username
+
+GET /account/email_check
+- UsersController#check_email
+
+GET /account/forgot_password
+- UsersController#forgot_password
+
+POST /account/forgot_password
+- UsersController#post_forgot_password
+* email
+
+
+h2. My Account
+
+PUT /account
+- UsersController#update
+* authlogic_user[login]
+* authlogic_user[email]
+* authlogic_user[password]
+* authlogic_user[password_confirmation]
+* month
+* year
+* day
+* gender
+
+
+h2. Drop / Restore Partner Link
+
+DELETE /partner-link
+- PartnerLinkController#destroy
+Initiates Unlink Waiting Period
+
+POST /partner-link/restore
+- PartnerLinkController#post_restore_partner_link
+Drops Unlink Waiting Period
+
+h2. Feedback
+
+POST /feedbacks
+* feedback[email] - Only when not logged in
+* feedback[message]
+* feedback[url]
+
+h2. Models
+
+h3. Partner
+
+* pending_unlink_at
+  When a partner wants to unlink from mate, a pending/waiting period of one week starts before the unlinking takes effect. This field tells at what timedate to actually drop the link.
+
+h3. Feedback
+
+Not AR model but MongoMapper model.
