@@ -1,33 +1,80 @@
+h1. CONFIGURATION
+
+@config/initializers/mongodb.rb@ : Config for MongoMapper
+
+h2. Application
+
+Application-specific config found at @config/ecc.yml@
+
+Base URI, must be changed depending on environment
+
+@base_uri: http://localhost@
+    
+p. Where to upload pictures of Photo Gallery
+
+bc.. photo_gallery:    
+    path: public/uploads/pictures/
+    
+p. Send auto-generated Positive Stroke when a Satisfaction Level changes by 'score_change'
+Layout 'message' for auto-generated Positive Stroke
+Layout text for the subject of the email sent for auto-generated: 'reminder_subject'
+
+bc.. positive_strokes:
+    score_change: 10
+    message: Congratulations! [my_partner] raised his need for [need] from [baseline] to [shared]
+    reminder_subject: You have a reminder to send a positive stroke!
+
+p. Send reminder every 'default_time' hours
+
+bc.. reminders:
+    default_time: 12
+
+p. That's it!
+
+h2. Email dispatching
+
+bc.. ActionMailer::Base.smtp_settings = {
+  :enable_starttls_auto => true,
+  :address => "smtp.gmail.com",
+  :port => 587,
+  :domain => "ontoworks.com",
+  :authentication => :plain,
+  :user_name => "couplespace@ontoworks.com",
+  :password => "couplespace123"
+}
+
+p. Change values above accordingly
+
 h1. HOME
 
 GET /home
-- HomeController#index
+@HomeController#index@
 
 h2. Photo Gallery
 
 POST /photo-gallery
-- PhotoGalleryController#create
+@PhotoGalleryController#create@
 
 h2. Wylayps
 
 POST /wylayps
-- WylaypsController
+@WylaypsController@
 
 h2. UI
 
-ui.photo_gallery.js - Photo Gallery
+@ui.photo_gallery.js@ - Photo Gallery
 
 * FancyBox plugin
-:: thirdparty/fancybox/jquery.fancybox-1.3.1.pack.js
-:: thirdparty/fancybox/jquery.easing-1.3.pack.js
-:: thirdparty/fancybox/jquery.mousewheel-3.0.2.pack.js
+:: @thirdparty/fancybox/jquery.fancybox-1.3.1.pack.js@
+:: @thirdparty/fancybox/jquery.easing-1.3.pack.js@
+:: @thirdparty/fancybox/jquery.mousewheel-3.0.2.pack.js@
 
 * Uploadify Plugin
-:: uploadify/swfobject.js
-:: uploadify/jquery.uploadify.v2.1.4.min
+:: @uploadify/swfobject.js@
+:: @uploadify/jquery.uploadify.v2.1.4.min@
 
-ui.home.js - Wylayps
-ui.nsbg_brief.js - How Are We Doing
+@ui.home.js@ - Wylayps
+@ui.nsbg_brief.js@ - How Are We Doing
 
 
 h1. CLARIFY YOUR NEEDS
@@ -35,7 +82,7 @@ h1. CLARIFY YOUR NEEDS
 h2. CYN Process
 
 GET calls below deliver current state of each CYN step
-CynController#get_step : receives all URLs below. Dynamically decides what method to call according to requested step.
+@CynController#get_step@ : receives all URLs below. Dynamically decides what method to call according to requested step.
 
 GET /cyn/questions
 GET /cyn/choose-your-needs
@@ -44,7 +91,7 @@ GET /cyn/review
 GET /cyn/link-to-partner
 GET /cyn/next-step?current_step='<current_step>' : delivers next step if current step is known
 
-CynController#post_step : receives all URLs above. Dynamically decides what method to call according to requested step.
+@CynController#post_step@ : receives all URLs below. Dynamically decides what method to call according to requested step.
 
 POST /cyn/questions
 * first_time : true | false
@@ -86,13 +133,13 @@ Tells that a partner has rejected an invitation to link accounts
  
 h2. UI
 
-ui.cyn.js: Controls the whole CYN process. Each CYN step is called via Ajax.
+@ui.cyn.js@: Controls the whole CYN process. Each CYN step is called via Ajax.
 
-ui.need_group_box.js: Need groupings in Choose Your Needs step
+@ui.need_group_box.js@: Need groupings in Choose Your Needs step
 
-ui.need_rating_box.js: Each of the needs in the Rate Your Needs step
+@ui.need_rating_box.js@: Each of the needs in the Rate Your Needs step
 
-ui.partner_link_request.js: Accept / Reject partner linking invitation from Link To Partner step
+@ui.partner_link_request.js@: Accept / Reject partner linking invitation from Link To Partner step
 
 h2. Models
 
@@ -219,17 +266,110 @@ This is where custom Positive Strokes are stored. Auto PS are directly generated
 
 h1. FUN
 
+h2. Situational Games
+
+This is a little application developed in Node.js with data backed by MongoDB. The integration with the main app is done thru the User Interface which is served by the Rails application, while data is served by the Node.js application thru a basic ReST API built upon ExpressJS --which is a lightweight web framework inspired by the Ruby sinatra framework.
+The access to MongoDB is made by Mongoose which is a higher-abstraction layer acting like an "ORM" allowing to map Models to Mongo collections.
+
+So, instead of Rails grabbing data from SQL thru AR, Rails grabs data from the ReST API by using the RestClient library.
+
+Since using Node.js adds complexity to the maintainability of the application it's easy to get back to ActiveRecord or using a Ruby library for talking to Mongo. Check Feedback implementation for more details on how to access Mongo from Ruby.
+
+Domain code lives within the module @Domain::CoupleFun@ at @lib/domain/couple_fun.rb@ which is included in @CoupleFunController@.
+
+Let's see an example ...
+
+bc.. CoupleFunController
+
+def index
+  unless current_user
+    session[:games_count]=0
+  end
+
+  @game_locations = game_situations
+  @games= games
+  @redirect_to= "fun_url"
+end
+
+bc.. lib/domain/couple_fun.rb
+
+def game_situations
+  game_locations_mongo
+end
+
+def game_locations_mongo
+  game_locations= []
+  rows= JSON.parse RestClient.get('http://localhost:8000/couple_fun/game_locations')
+  rows.each do |row|
+    game_locations << JSON.parse(row)
+  end
+  game_locations
+end
+
+h3. Rails Resources
+
+GET /couple_fun
+@CoupleFunController#index@
+
+GET /couple-fun/game-situations(.html)?view=accordion
+@CoupleFunController#get_situations@
+* view: Game situation may be presented in different ways. Default HTML representation is the accordion view seen at /couple_fun.
+
+GET /couple-fun/games?situation=while shopping
+@CoupleFunController#get_games@
+* situation: the descriptive name of the situation
+
+GET /couple_fun/create_new_game
+@CoupleFunController#create_new_game@
+
+POST /couple-fun/games
+@CoupleFunController#post_game@
+* game[category]
+* game[rules]
+* game[situations]
+* game[tips]
+* game[title]
+* game[warning]
+
+h3. ExpressJS Resources
+
+All resources below live at @node/couple_fun/main.js@
+
+PUT /admin/couple_fun/games
+Update game
+
+POST /admin/couple_fun/games
+Create new game
+
+DELETE /admin/couple_fun/games/:id
+Delete game
+
+GET /couple_fun/games
+
+GET /couple_fun/games/:id
+
+h3. Models
+
+All models defined at @node/couple_fun/models.js@
+
+h4. Game
+
+h4. GameLocation
+
+h3. UI
+
+@ui.couple_fun.js@
 
 h1. ACCOUNT
 
 h2. Login & Registration
 
 GET /user/new
-- UsersController#new
+@UsersController#new@
 HTML form for registering new user
 
 POST /account
-- UsersController#create
+@UsersController#create@
 * authlogic_user[login]
 * authlogic_user[email]
 * authlogic_user[password]
@@ -240,35 +380,35 @@ POST /account
 * gender
 
 GET /account/logout
-- UserSessionsController#destroy
+@UserSessionsController#destroy@
 Used for logout from UI
 
 POST /account/logout
-- UserSessionsController#logout
+@UserSessionsController#logout@
 Used for logout from Ajax
 
 GET /account/activation
-- UsersController#activation
+@UsersController#activation@
 Landing page for account activation. Link to this page is sent to email right after registration.
 
 GET /account/username_check
-- UsersController#check_username
+@UsersController#check_username@
 
 GET /account/email_check
-- UsersController#check_email
+@UsersController#check_email@
 
 GET /account/forgot_password
-- UsersController#forgot_password
+@UsersController#forgot_password@
 
 POST /account/forgot_password
-- UsersController#post_forgot_password
+@UsersController#post_forgot_password@
 * email
 
 
 h2. My Account
 
 PUT /account
-- UsersController#update
+@UsersController#update@
 * authlogic_user[login]
 * authlogic_user[email]
 * authlogic_user[password]
@@ -282,11 +422,11 @@ PUT /account
 h2. Drop / Restore Partner Link
 
 DELETE /partner-link
-- PartnerLinkController#destroy
+@PartnerLinkController#destroy@
 Initiates Unlink Waiting Period
 
 POST /partner-link/restore
-- PartnerLinkController#post_restore_partner_link
+@PartnerLinkController#post_restore_partner_link@
 Drops Unlink Waiting Period
 
 h2. Feedback
@@ -306,3 +446,11 @@ h3. Partner
 h3. Feedback
 
 Not AR model but MongoMapper model.
+
+h2. UI
+
+@ui.sign_in.js@
+
+@ui.sign_up.js@
+
+@ui.my_account.js@
